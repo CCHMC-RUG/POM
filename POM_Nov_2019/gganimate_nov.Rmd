@@ -1,0 +1,83 @@
+---
+title: "CCHMC RUG - POM November"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+### Packages
+
+You may need to install the following packages:
+
+```{r packages, eval = FALSE}
+devtools::install_github('thomasp85/gganimate')
+install.packages("gifski")
+install.packages("GSODR")
+```
+
+```{r}
+library(tidyverse)
+library(gganimate)
+```
+
+## Data
+
+The `GSODR` package contains historical weather data.  The code chunk below downloads weather data recorded at CVG from 1980 to 2019.
+
+```{r}
+cincy_stations <- GSODR::nearest_stations(LAT = 39.10312, LON = -84.51202, distance = 20) # WEATHER STATIONS
+cincy_weather <- GSODR::get_GSOD(years = 1980:2019, station = "724210-93814") # GET WEATHER DATA
+
+cincy_clean <- cincy_weather %>% 
+  filter(STNID == "724210-93814") %>% 
+  select(STNID,
+         YEAR:DAY,
+         TEMP) %>% 
+  mutate(temp_f = TEMP * 1.8 + 32)
+
+monthly_avg <- cincy_clean %>% 
+  group_by(YEAR, MONTH) %>% 
+  summarise(avg_tempf = mean(temp_f))
+
+```
+
+## Monthly Averages
+
+```{r}
+x <- filter(monthly_avg, YEAR %in% c(2016, 2017, 2018))
+
+ggplot(monthly_avg, aes(MONTH, avg_tempf, fill = avg_tempf)) +
+  geom_col() +
+  scale_fill_viridis_c() +
+  transition_time(YEAR) +
+  labs(title = 'Year: {frame_time}', x = 'Month', y = 'Temperature (F)') +
+  ease_aes("linear") +
+  theme(legend.position = "none")
+
+
+```
+
+## Monthly Averages by Season
+
+```{r}
+
+seasons_avg <- monthly_avg %>% 
+  mutate(season = case_when(MONTH <= 3 ~ "Winter",
+                            MONTH %in% 4:6 ~ "Spring",
+                            MONTH %in% 7:9 ~ "Summer",
+                            MONTH > 9 ~ "Fall"))
+
+
+ggplot(seasons_avg, aes(MONTH, avg_tempf, fill = avg_tempf)) +
+  geom_col() +
+  scale_fill_viridis_c() +
+  facet_wrap(~season, scales = "free_x") +
+  transition_time(YEAR) +
+  labs(title = 'Year: {frame_time}', x = 'Month', y = 'Temperature (F)') +
+  ease_aes("linear") +
+  theme(legend.position = "none")
+
+```
+
